@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Inside the <head> segment of your templates -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#312e81">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+        navigator.serviceWorker.register("/static/sw.js")
+            .then(reg => console.log("PWA Service Worker Loaded successfully:", reg.scope))
+            .catch(err => console.error("Service Worker failed to map:", err));
+        });
+    }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stock Manager | TeeStore</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased pb-24 select-none">
+
+    <header class="bg-indigo-900 text-white shadow-sm sticky top-0 z-50 px-4 py-3 border-b border-indigo-800">
+        <h1 class="text-base font-black tracking-wide uppercase">Restock Intake</h1>
+        <p class="text-[10px] text-indigo-300 font-medium">Increment Size Variations</p>
+    </header>
+
+    <main class="w-full max-w-md mx-auto p-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
+            <!-- Native HTML Form POST workflow -->
+            <form action="/restock-product" method="POST" class="space-y-3">
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Select T-Shirt</label>
+                    <select name="product_id" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none">
+                        <option value="" disabled selected>Choose Target Model...</option>
+                        {% if unique_products %}
+                            {% for prod in unique_products %}
+                            <option value="{{ prod.product_id }}">{{ prod.name }} (ID: {{ prod.product_id }})</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Stock Number</label>
+                    <input type="text" name="stock_id" placeholder="e.g., S1" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Select Size</label>
+                        <select name="size" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none">
+                            <option value="S">Size S</option>
+                            <option value="M">Size M</option>
+                            <option value="L">Size L</option>
+                            <option value="XL">Size XL</option>
+                            <option value="XXL">Size XXL</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Quantity Added</label>
+                        <input type="number" name="quantity" placeholder="e.g., 25" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 text-white font-bold text-xs p-3 rounded-xl active:bg-emerald-700 shadow-xs mt-2">Apply Stock Addition</button>
+            </form>
+        </div>
+    </main>
+
+    <!-- Navigation Dock -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50">
+        <div class="max-w-md mx-auto grid grid-cols-3 h-16 text-center">
+            <a href="/" class="flex flex-col justify-center items-center text-slate-400 space-y-0.5">
+                <span class="text-lg">📊</span><span class="text-[10px]">Analytics</span>
+            </a>
+            <a href="/add-product-view" class="flex flex-col justify-center items-center text-slate-400 space-y-0.5">
+                <span class="text-lg">➕</span><span class="text-[10px]">Add Product</span>
+            </a>
+            <a href="/restock-view" class="flex flex-col justify-center items-center text-indigo-600 font-bold space-y-0.5">
+                <span class="text-lg">📦</span><span class="text-[10px]">Restock</span>
+            </a>
+        </div>
+    </nav>
+
+</body>
+</html>

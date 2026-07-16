@@ -1,0 +1,16 @@
+{
+  "short_name": "TeeStore",
+  "name": "TeeStore Owner Studio",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2589/2589901.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#312e81",
+  "theme_color": "#312e81",
+  "display": "standalone",
+  "orientation": "portrait"
+}
