@@ -1,87 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Inside the <head> segment of your templates -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#312e81">
+    <meta name="theme-color" content="#4f46e5">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-        navigator.serviceWorker.register("/static/sw.js")
-            .then(reg => console.log("PWA Service Worker Loaded successfully:", reg.scope))
-            .catch(err => console.error("Service Worker failed to map:", err));
+            navigator.serviceWorker.register("/static/sw.js")
+                .then(reg => console.log("PWA Service Worker Loaded successfully:", reg.scope))
+                .catch(err => console.error("Service Worker failed to map:", err));
         });
     }
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stock Manager | TeeStore</title>
+    <title>Stock Manager | Joo Outfit</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        
+        /* Continuous Live Stock Ticker Animation Config */
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+        }
+        .ticker-wrap { 
+            overflow: hidden; 
+            width: 100%; 
+        }
+        .ticker-move {
+            display: inline-flex;
+            white-space: nowrap;
+            animation: ticker 25s linear infinite;
+        }
+        .ticker-move:hover { animation-play-state: paused; }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans antialiased pb-24 select-none">
+<body class="bg-[#f8fafc] text-gray-900 font-sans antialiased pb-28 select-none">
 
-    <header class="bg-indigo-900 text-white shadow-sm sticky top-0 z-50 px-4 py-3 border-b border-indigo-800">
-        <h1 class="text-base font-black tracking-wide uppercase">Restock Intake</h1>
-        <p class="text-[10px] text-indigo-300 font-medium">Increment Size Variations</p>
+    <!-- Premium Mobile Top Header -->
+    <header class="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 px-5 py-4 flex justify-between items-center border-b border-gray-100">
+        <div>
+            <h1 class="text-base font-black tracking-wider uppercase text-gray-900">Joo Outfit Studio</h1>
+            <p class="text-[9px] text-gray-400 font-extrabold tracking-widest uppercase">Inventory Intake</p>
+        </div>
+        <div class="flex items-center space-x-1.5 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 inline-block animate-pulse"></span>
+            <span class="text-[9px] uppercase font-black text-indigo-600 tracking-wider">Live Sync</span>
+        </div>
     </header>
 
+    <!-- Continuous Live Low Stock Ticker Ribbon (Placed explicitly outside main layout) -->
+    {% if low_stock %}
+    <div class="ticker-wrap bg-rose-50 border-b border-rose-100 py-2 flex items-center shadow-xs relative z-40">
+        <div class="bg-rose-600 text-white text-[9px] font-black px-3 py-0.5 rounded-r-md uppercase tracking-wider z-50 flex items-center shadow-xs mr-2">
+            Alert
+        </div>
+        <div class="ticker-move flex items-center space-x-8 text-[11px] font-bold text-rose-700/90">
+            {% for i in range(2) %}
+                {% for item in low_stock %}
+                <span class="inline-flex items-center">
+                    ⚠️ [ID: #{{ item.stock_id }}] <span class="text-gray-900 font-extrabold mx-1">{{ item.name }}</span> ({{ item.size }}) only <span class="bg-rose-600 text-white px-1.5 py-0.2 rounded ml-1 font-black">{{ item.quantity }} left</span>
+                </span>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Premium Native Flash Messages Panel Container -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flash-message-container" class="w-full max-w-md mx-auto px-4 mt-3 transition-all duration-300 ease-out">
+                {% for category, msg in messages %}
+                    <div class="flex items-center justify-between p-3.5 rounded-2xl border text-xs font-bold shadow-xs tracking-wide {{ 'bg-emerald-50 border-emerald-100 text-emerald-800' if category == 'success' else 'bg-rose-50 border-rose-100 text-rose-800' }}">
+                        <div class="flex items-center space-x-2">
+                            <span>{{ '✅' if category == 'success' else '❌' }}</span>
+                            <span>{{ msg }}</span>
+                        </div>
+                        <button onclick="dismissToastAlert()" class="text-gray-400 hover:text-gray-600 text-sm font-black px-1">×</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
     <main class="w-full max-w-md mx-auto p-4">
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
+        <!-- Main Form Content Card -->
+        <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-5">
+            <div>
+                <h2 class="text-sm font-black text-gray-900 uppercase tracking-wider">Restock Intake Form</h2>
+                <p class="text-[11px] text-gray-400 leading-relaxed">Increment variant scale numbers or allocate active size structural counts into warehouse storage keys.</p>
+            </div>
+
             <!-- Native HTML Form POST workflow -->
-            <form action="/restock-product" method="POST" class="space-y-3">
+            <form action="/restock-product" method="POST" class="space-y-4">
+                
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Select T-Shirt</label>
-                    <select name="product_id" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none">
-                        <option value="" disabled selected>Choose Target Model...</option>
-                        {% if unique_products %}
-                            {% for prod in unique_products %}
-                            <option value="{{ prod.product_id }}">{{ prod.name }} (ID: {{ prod.product_id }})</option>
-                            {% endfor %}
-                        {% endif %}
-                    </select>
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1 mb-1.5">Select T-Shirt Base Model</label>
+                    <div class="relative">
+                        <select name="product_id" required class="w-full text-xs p-3.5 rounded-xl bg-gray-50 border border-gray-200/80 font-bold text-gray-800 appearance-none focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+                            <option value="" disabled selected>Choose Target Model...</option>
+                            {% if unique_products %}
+                                {% for prod in unique_products %}
+                                <option value="{{ prod.product_id }}">{{ prod.name }} (ID: {{ prod.product_id }})</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                            <span class="text-[10px]">▼</span>
+                        </div>
+                    </div>
                 </div>
+
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Stock Number</label>
-                    <input type="text" name="stock_id" placeholder="e.g., S1" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none">
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1 mb-1.5">Stock Identification Number</label>
+                    <input type="text" name="stock_id" placeholder="e.g., S1, BATCH-01" required class="w-full text-xs p-3.5 rounded-xl bg-gray-50 border border-gray-200/80 font-bold placeholder-gray-300 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
                 </div>
+
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Select Size</label>
-                        <select name="size" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none">
-                            <option value="S">Size S</option>
-                            <option value="M">Size M</option>
-                            <option value="L">Size L</option>
-                            <option value="XL">Size XL</option>
-                            <option value="XXL">Size XXL</option>
-                        </select>
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1 mb-1.5">Select Variant Size</label>
+                        <div class="relative">
+                            <select name="size" required class="w-full text-xs p-3.5 rounded-xl bg-gray-50 border border-gray-200/80 font-bold text-gray-800 appearance-none focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
+                                <option value="S">Size S</option>
+                                <option value="M">Size M</option>
+                                <option value="L">Size L</option>
+                                <option value="XL">Size XL</option>
+                                <option value="XXL">Size XXL</option>
+                            </select>
+                            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
+                                <span class="text-[10px]">▼</span>
+                            </div>
+                        </div>
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Quantity Added</label>
-                        <input type="number" name="quantity" placeholder="e.g., 25" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1 mb-1.5">Quantity Added</label>
+                        <input type="number" name="quantity" placeholder="e.g., 25" min="1" required class="w-full text-xs p-3.5 rounded-xl bg-gray-50 border border-gray-200/80 font-bold placeholder-gray-300 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
                     </div>
                 </div>
-                <button type="submit" class="w-full bg-emerald-600 text-white font-bold text-xs p-3 rounded-xl active:bg-emerald-700 shadow-xs mt-2">Apply Stock Addition</button>
+
+                <button type="submit" class="w-full bg-gray-900 hover:bg-indigo-600 active:scale-95 text-white font-black text-xs p-4 rounded-xl shadow-xs transition-all uppercase tracking-wider mt-2">
+                    Apply Stock Addition
+                </button>
             </form>
         </div>
     </main>
 
-    <!-- Navigation Dock -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50">
-        <div class="max-w-md mx-auto grid grid-cols-3 h-16 text-center">
-            <a href="/" class="flex flex-col justify-center items-center text-slate-400 space-y-0.5">
-                <span class="text-lg">📊</span><span class="text-[10px]">Analytics</span>
+    <!-- Unified Global Navigation Dock -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-2xl z-40">
+        <div class="max-w-md mx-auto grid grid-cols-4 h-16 text-center">
+            <a href="/" class="flex flex-col justify-center items-center text-gray-400 space-y-0.5">
+                <span class="text-lg">📊</span><span class="text-[10px] font-bold tracking-tight">Analytics</span>
             </a>
-            <a href="/add-product-view" class="flex flex-col justify-center items-center text-slate-400 space-y-0.5">
-                <span class="text-lg">➕</span><span class="text-[10px]">Add Product</span>
+            <a href="/#statements" class="flex flex-col justify-center items-center text-gray-400 space-y-0.5">
+                <span class="text-lg">📋</span><span class="text-[10px] font-bold tracking-tight">Statements</span>
             </a>
-            <a href="/restock-view" class="flex flex-col justify-center items-center text-indigo-600 font-bold space-y-0.5">
-                <span class="text-lg">📦</span><span class="text-[10px]">Restock</span>
+            <a href="/add-product-view" class="flex flex-col justify-center items-center text-gray-400 space-y-0.5">
+                <span class="text-lg">➕</span><span class="text-[10px] font-bold tracking-tight">Add Item</span>
+            </a>
+            <a href="/restock-view" class="flex flex-col justify-center items-center text-indigo-600 font-black space-y-0.5">
+                <span class="text-lg">📦</span><span class="text-[10px] font-bold tracking-tight">Restock</span>
             </a>
         </div>
     </nav>
 
+    <!-- Auto-hide Toast Notification Logic Extension -->
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('flash-message-container');
+            if (container) {
+                setTimeout(() => {
+                    container.style.opacity = '0';
+                    container.style.transform = 'translateY(-10px)';
+                    setTimeout(() => container.remove(), 300);
+                }, 4500);
+            }
+        });
+
+        function dismissToastAlert() {
+            const container = document.getElementById('flash-message-container');
+            if(container) container.remove();
+        }
+    </script>
 </body>
 </html>

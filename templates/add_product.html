@@ -1,80 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <!-- Inside the <head> segment of your templates -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <meta name="theme-color" content="#312e81">
+    <meta name="theme-color" content="#4f46e5">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-        navigator.serviceWorker.register("/static/sw.js")
-            .then(reg => console.log("PWA Service Worker Loaded successfully:", reg.scope))
-            .catch(err => console.error("Service Worker failed to map:", err));
+            navigator.serviceWorker.register("/static/sw.js")
+                .then(reg => console.log("PWA Service Worker Loaded successfully:", reg.scope))
+                .catch(err => console.error("Service Worker failed to map:", err));
         });
     }
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Add Product | TeeStore</title>
+    <title>Add Product | Joo Outfit</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        
+        /* Continuous Live Stock Ticker Animation Config */
+        @keyframes ticker {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+        }
+        .ticker-wrap { 
+            overflow: hidden; 
+            width: 100%; 
+        }
+        .ticker-move {
+            display: inline-flex;
+            white-space: nowrap;
+            animation: ticker 25s linear infinite;
+        }
+        .ticker-move:hover { animation-play-state: paused; }
+    </style>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans antialiased pb-24 select-none">
+<body class="bg-[#f8fafc] text-gray-900 font-sans antialiased pb-28 select-none">
 
-    <header class="bg-indigo-900 text-white shadow-sm sticky top-0 z-50 px-4 py-3 border-b border-indigo-800">
-        <h1 class="text-base font-black tracking-wide uppercase">Add Product</h1>
-        <p class="text-[10px] text-indigo-300 font-medium">Register a New Design Model</p>
+    <!-- Premium Mobile Top Header (Matches Dashboard) -->
+    <header class="bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 px-5 py-4 flex justify-between items-center border-b border-gray-100">
+        <div>
+            <h1 class="text-base font-black tracking-wider uppercase text-gray-900">Joo Outfit Studio</h1>
+            <p class="text-[9px] text-gray-400 font-extrabold tracking-widest uppercase">Inventory Registry</p>
+        </div>
+        <div class="flex items-center space-x-1.5 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-600 inline-block animate-pulse"></span>
+            <span class="text-[9px] uppercase font-black text-indigo-600 tracking-wider">Live Sync</span>
+        </div>
     </header>
 
+    <!-- Continuous Live Low Stock Ticker Ribbon -->
+    {% if low_stock %}
+    <div class="ticker-wrap bg-rose-50 border-b border-rose-100 py-2 flex items-center shadow-xs relative z-40">
+        <div class="bg-rose-600 text-white text-[9px] font-black px-3 py-0.5 rounded-r-md uppercase tracking-wider z-50 flex items-center shadow-xs mr-2">
+            Alert
+        </div>
+        <div class="ticker-move flex items-center space-x-8 text-[11px] font-bold text-rose-700/90">
+            {% for i in range(2) %}
+                {% for item in low_stock %}
+                <span class="inline-flex items-center">
+                    ⚠️ [ID: #{{ item.stock_id }}] <span class="text-gray-900 font-extrabold mx-1">{{ item.name }}</span> ({{ item.size }}) only <span class="bg-rose-600 text-white px-1.5 py-0.2 rounded ml-1 font-black">{{ item.quantity }} left</span>
+                </span>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Premium Native Flash Messages Panel Container -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flash-message-container" class="w-full max-w-md mx-auto px-4 mt-3 transition-all duration-300 ease-out">
+                {% for category, msg in messages %}
+                    <div class="flex items-center justify-between p-3.5 rounded-2xl border text-xs font-bold shadow-xs tracking-wide {% if category == 'success' %} bg-emerald-50 border-emerald-100 text-emerald-800 {% else %} bg-rose-50 border-rose-100 text-rose-800 {% endif %}">
+                        <div class="flex items-center space-x-2">
+                            <span>{% if category == 'success' %}✅{% else %}❌{% endif %}</span>
+                            <span>{{ msg }}</span>
+                        </div>
+                        <button onclick="dismissToastAlert()" class="text-gray-400 hover:text-gray-600 text-sm font-black px-1">×</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
     <main class="w-full max-w-md mx-auto p-4">
-        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
-            <!-- Native HTML Form POST workflow -->
-            <form action="/add-product" method="POST" class="space-y-3">
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Product Id</label>
-                    <input type="text" name="product_id" placeholder="e.g., Stock(S1)" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-indigo-500">
-                </div>
+        <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-5">
+            <div>
+                <h2 class="text-sm font-black text-gray-900 uppercase tracking-wider">Register New Design</h2>
+                <p class="text-[11px] text-gray-400 leading-relaxed">Fill out the parameters below to configure a fresh T-shirt variant base model template.</p>
+            </div>
+
+            <!-- Enhanced Form with File Upload Configuration Multipart Rule -->
+            <form action="/add-product" method="POST" enctype="multipart/form-data" class="space-y-4">
                 
+                <!-- Interactive Premium File Selector UI Component Wrapper -->
+                <div class="space-y-1.5">
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1">T-Shirt Graphic Preview Image</label>
+                    <div class="relative group border-2 border-dashed border-gray-200 hover:border-indigo-400 bg-gray-50/50 rounded-2xl p-4 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer min-h-[120px]">
+                        <!-- Single Master Native Input Trigger -->
+                        <input type="file" name="image_file" id="image_file" accept="image/*" onchange="previewSelectedFile(event)" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-20">
+                        
+                        <!-- File Upload Dynamic Shell Interface States -->
+                        <div id="upload-placeholder-ui" class="space-y-1 z-10">
+                            <span class="text-2xl block">📸</span>
+                            <span class="text-xs font-bold text-gray-700 block">Tap to Capture or Upload File</span>
+                            <span class="text-[10px] text-gray-400 block font-medium">PNG, JPG formats supported</span>
+                        </div>
+                        
+                        <div id="upload-preview-container" class="hidden w-full flex flex-col items-center justify-center space-y-2 z-10">
+                            <img id="upload-preview-img" src="#" alt="Preview" class="w-16 h-16 object-cover rounded-lg border border-gray-200 shadow-xs">
+                            <span id="upload-file-name" class="text-[10px] text-emerald-600 font-extrabold tracking-wide truncate max-w-[200px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">Selected</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Product Title</label>
-                    <input type="text" name="name" placeholder="e.g., Oversized Anime Tee" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-indigo-500">
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1 mb-1.5">Product Title / Name</label>
+                    <input type="text" name="name" placeholder="e.g., Oversized Anime Tee" required class="w-full text-xs p-3.5 rounded-xl bg-gray-50 border border-gray-200/80 font-bold placeholder-gray-300 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
                 </div>
                 
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Cost Price (₹)</label>
-                        <input type="number" name="cost_price" placeholder="Wholesale Cost" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-indigo-500">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1 mb-1.5">Cost Price (₹)</label>
+                        <input type="number" name="cost_price" placeholder="Wholesale Cost" required class="w-full text-xs p-3.5 rounded-xl bg-gray-50 border border-gray-200/80 font-bold placeholder-gray-300 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
                     </div>
                     <div>
-                        <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Retail Price (₹)</label>
-                        <input type="number" name="selling_price" placeholder="Selling Price" required class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-indigo-500">
+                        <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1 mb-1.5">Retail Price (₹)</label>
+                        <input type="number" name="selling_price" placeholder="Selling Price" required class="w-full text-xs p-3.5 rounded-xl bg-gray-50 border border-gray-200/80 font-bold placeholder-gray-300 focus:outline-none focus:border-indigo-500 focus:bg-white transition-all">
                     </div>
                 </div>
-                <div>
-                    <label class="text-[10px] font-bold text-slate-400 uppercase block mb-1">Image Reference URL</label>
-                    <input type="text" name="image_path" placeholder="Image web link or filename" class="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:outline-none focus:border-indigo-500">
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white font-bold text-xs p-3 rounded-xl active:bg-indigo-700 shadow-xs mt-2">Create Product Entry</button>
+
+                <button type="submit" class="w-full bg-gray-900 hover:bg-indigo-600 active:scale-95 text-white font-black text-xs p-4 rounded-xl shadow-xs transition-all uppercase tracking-wider mt-2">
+                    Create Product Entry
+                </button>
             </form>
         </div>
     </main>
 
-    <!-- Navigation Dock -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50">
-        <div class="max-w-md mx-auto grid grid-cols-3 h-16 text-center">
-            <a href="/" class="flex flex-col justify-center items-center text-slate-400 space-y-0.5">
-                <span class="text-lg">📊</span><span class="text-[10px]">Analytics</span>
+    <!-- Navigation Dock (Matches Premium 4-Tab Dock Layout) -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 shadow-2xl z-40">
+        <div class="max-w-md mx-auto grid grid-cols-4 h-16 text-center">
+            <a href="/" class="flex flex-col justify-center items-center text-gray-400 space-y-0.5">
+                <span class="text-lg">📊</span><span class="text-[10px] font-bold tracking-tight">Analytics</span>
             </a>
-            <a href="/add-product-view" class="flex flex-col justify-center items-center text-indigo-600 font-bold space-y-0.5">
-                <span class="text-lg">➕</span><span class="text-[10px]">Add Product</span>
+            <a href="/#statements" class="flex flex-col justify-center items-center text-gray-400 space-y-0.5">
+                <span class="text-lg">📋</span><span class="text-[10px] font-bold tracking-tight">Statements</span>
             </a>
-            <a href="/restock-view" class="flex flex-col justify-center items-center text-slate-400 space-y-0.5">
-                <span class="text-lg">📦</span><span class="text-[10px]">Restock</span>
+            <a href="/add-product-view" class="flex flex-col justify-center items-center text-indigo-600 font-black space-y-0.5">
+                <span class="text-lg">➕</span><span class="text-[10px] font-bold tracking-tight">Add Item</span>
+            </a>
+            <a href="/restock-view" class="flex flex-col justify-center items-center text-gray-400 space-y-0.5">
+                <span class="text-lg">📦</span><span class="text-[10px] font-bold tracking-tight">Restock</span>
             </a>
         </div>
     </nav>
 
+    <!-- Frontend Interactive Media Logic Panel Extension -->
+    <script>
+        function previewSelectedFile(event) {
+            const input = event.target;
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('upload-preview-img').src = e.target.result;
+                    document.getElementById('upload-placeholder-ui').classList.add('hidden');
+                    document.getElementById('upload-preview-container').classList.remove('hidden');
+                    document.getElementById('upload-file-name').innerText = input.files[0].name;
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Automatically hide alert message box cards after 4.5 seconds
+        window.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('flash-message-container');
+            if (container) {
+                setTimeout(() => {
+                    container.style.opacity = '0';
+                    container.style.transform = 'translateY(-10px)';
+                    setTimeout(() => container.remove(), 300);
+                }, 4500);
+            }
+        });
+
+        function dismissToastAlert() {
+            const container = document.getElementById('flash-message-container');
+            if(container) container.remove();
+        }
+    </script>
 </body>
 </html>
