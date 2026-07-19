@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#4f46e5">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -17,7 +18,7 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Studio Dashboard | Joo Outfit</title>
+    <title>Dashboard | Joo Outfit</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * { -webkit-tap-highlight-color: transparent; }
@@ -44,7 +45,7 @@
                 color: black !important;
                 padding-bottom: 0 !important;
             }
-            header, .ticker-wrap, nav, #tab-analytics-content, .print-hide-btn, .date-filter-wrap {
+            header, .ticker-wrap, nav, #tab-analytics-content, .print-hide-btn, .date-filter-wrap, #flash-message-container {
                 display: none !important;
             }
             #tab-reports-content {
@@ -103,6 +104,23 @@
         </div>
     </div>
     {% endif %}
+
+    <!-- Premium Native Flash Messages Panel Container for Sales Notifications -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div id="flash-message-container" class="w-full max-w-md mx-auto px-4 mt-3 transition-all duration-300 ease-out relative z-50">
+                {% for category, msg in messages %}
+                    <div class="flex items-center justify-between p-3.5 rounded-2xl border text-xs font-bold shadow-xs tracking-wide {% if category == 'success' %} bg-emerald-50 border-emerald-100 text-emerald-800 {% else %} bg-rose-50 border-rose-100 text-rose-800 {% endif %}">
+                        <div class="flex items-center space-x-2">
+                            <span>{% if category == 'success' %}✅{% else %}❌{% endif %}</span>
+                            <span>{{ msg }}</span>
+                        </div>
+                        <button onclick="dismissToastAlert()" class="text-gray-400 hover:text-gray-600 text-sm font-black px-1">×</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
 
     <main class="w-full max-w-md mx-auto px-4 py-5 space-y-6">
         
@@ -308,7 +326,22 @@
                 filterInput.value = localDateStr;
                 filterSalesByDateInput();
             }
+
+            // Auto-hide Flash Message container after 4.5 seconds
+            const flashContainer = document.getElementById('flash-message-container');
+            if (flashContainer) {
+                setTimeout(() => {
+                    flashContainer.style.opacity = '0';
+                    flashContainer.style.transform = 'translateY(-10px)';
+                    setTimeout(() => flashContainer.remove(), 300);
+                }, 4500);
+            }
         });
+
+        function dismissToastAlert() {
+            const flashContainer = document.getElementById('flash-message-container');
+            if (flashContainer) flashContainer.remove();
+        }
 
         function filterSalesByDateInput() {
             const filterValue = document.getElementById('report-date-filter').value;
@@ -382,7 +415,6 @@
                 globalActiveVariants.forEach((variant) => {
                     const option = document.createElement('option');
                     option.value = variant.size;
-                    // UPDATED: Displays both Size, Stock ID, and Live Stock values cleanly inside the dropdown choice options
                     option.text = `Size ${variant.size} (ID: ${variant.stock_id}) - Stock: ${variant.quantity}`;
                     sizeSelector.appendChild(option);
                 });

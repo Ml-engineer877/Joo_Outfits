@@ -73,7 +73,6 @@ def dashboard():
     low_stock_items = cursor.fetchall()
 
     # 4. Fetch Grouped Catalog Models with Safe JSON Size Aggregation Array Mapping
-    # Pulls stock_id so the frontend select option displays it alongside live values instantly
     grouped_catalog_query = """
         SELECT 
             p.product_id,
@@ -114,7 +113,6 @@ def dashboard():
             row['variants_json'] = "[]"
 
     # 5. Fetch Detailed Checkout Statements Log 
-    # MAPPED TO JOIN INVENTORY NATIVELY BY MATCHING PRODUCT_ID AND SIZE KEYS
     all_sales_query = """
         SELECT 
             s.quantity_sold, 
@@ -132,10 +130,8 @@ def dashboard():
     cursor.execute(all_sales_query)
     today_sales_data = cursor.fetchall()
     
-    # Convert datetime columns to strings so data attributes render properly in Jinja loop
     for sale in today_sales_data:
         if isinstance(sale['date_time'], datetime):
-            # Keeps date string format safe for the data-sale-date tracking layer
             sale['date_time'] = sale['date_time'].strftime('%Y-%m-%d %H:%M:%S')
     
     cursor.close()
@@ -155,7 +151,6 @@ def add_product_view():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # Fetch Low Stock Alerts so the ticker can render data on this page context
     stock_query = """
         SELECT i.stock_id, p.name, i.product_id, i.size, i.quantity 
         FROM Inventory i
@@ -174,11 +169,9 @@ def restock_view():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     
-    # 1. Fetch the unique products list for the dropdown selection
     cursor.execute("SELECT product_id, name FROM Products ORDER BY name ASC")
     unique_products_list = cursor.fetchall()
     
-    # 2. Fetch live low stock alerts matching dashboard logic exactly
     stock_query = """
         SELECT i.stock_id, p.name, i.product_id, i.size, i.quantity 
         FROM Inventory i
@@ -199,10 +192,9 @@ def restock_view():
 
 
 # ==========================================
-#      PURE PYTHON PURE FORM PROCESSING
+#       PURE PYTHON PURE FORM PROCESSING
 # ==========================================
 
-# Action: Log Counter Sale via POST Form (Handles custom multi-quantity drop metrics)
 @app.route('/reduce-stock', methods=['POST'])
 def reduce_stock():
     product_id = request.form.get('product_id')
@@ -213,13 +205,11 @@ def reduce_stock():
     cursor = conn.cursor(dictionary=True)
     
     try:
-        # Get standard prices from the Products table
-        price_query = "SELECT cost_price, selling_price FROM Products WHERE product_id = %s"
+        price_query = "SELECT name, cost_price, selling_price FROM Products WHERE product_id = %s"
         cursor.execute(price_query, (product_id,))
         product = cursor.fetchone()
 
         if product:
-            # Decrement inventory counts by the precise requested scale value quantity
             update_query = """
                 UPDATE Inventory 
                 SET quantity = quantity - %s 
@@ -227,7 +217,6 @@ def reduce_stock():
             """
             cursor.execute(update_query, (qty_to_deduct, product_id, size, qty_to_deduct))
             
-            # Write dynamic analytics statement metrics if inventory row rowcount checks out
             if cursor.rowcount > 0:
                 insert_sale_query = """
                     INSERT INTO Sales (product_id, size_sold, quantity_sold, sales_price, cost_price_at_sale, date_time)
@@ -235,17 +224,22 @@ def reduce_stock():
                 """
                 cursor.execute(insert_sale_query, (product_id, size, qty_to_deduct, product['selling_price'], product['cost_price']))
                 conn.commit()
+                flash(f"Successfully checked out {qty_to_deduct}x '{product['name']}' (Size {size})!", "success")
+            else:
+                flash("Insufficient stock remaining to fulfill this checkout item order quantity.", "error")
+        else:
+            flash("Target clothing model product profile could not be verified.", "error")
                 
     except Exception as e:
         print(f"Error reducing stock: {e}")
         conn.rollback()
+        flash("System transaction processing failure. Checkout logged offline.", "error")
     finally:
         cursor.close()
         conn.close()
         
     return redirect(url_for('dashboard'))
 
-# Action: Add New Base Product via POST Form (with File Upload Processing & Flash Messages)
 @app.route('/add-product', methods=['POST'])
 def add_product():
     name = request.form.get('name')
@@ -278,17 +272,12 @@ def add_product():
             INSERT INTO Products (name, cost_price, selling_price, image_path)
             VALUES (%s, %s, %s, %s)
         """
-        print(f"DEBUG: Executing SQL with values -> Name: {name}, Cost: {cost_price}, Sell: {selling_price}, Path: {db_image_path}")
-        
         cursor.execute(query, (name, cost_price, selling_price, db_image_path))
         conn.commit()
-        print("DEBUG: Database row committed successfully!")
-        
         flash(f"Successfully registered model: '{name}'!", "success")
     except Exception as db_e:
         print(f"DEBUG: Database execution crashed: {db_e}")
         conn.rollback()
-        
         flash("Failed to register entry. Please verify database integrity settings.", "error")
     finally:
         cursor.close()
@@ -296,7 +285,6 @@ def add_product():
         
     return redirect(url_for('add_product_view'))
 
-# Action: Apply Size Restocking Intake via POST Form (with Smart Merging & Flash Messages)
 @app.route('/restock-product', methods=['POST'])
 def restock_product():
     stock_id = request.form.get('stock_id')
@@ -308,7 +296,6 @@ def restock_product():
     cursor = conn.cursor()
 
     try:
-        # Check if this exact product-size pair already exists under any stock identity
         check_query = """
             SELECT stock_id FROM Inventory 
             WHERE product_id = %s AND size = %s 
@@ -318,7 +305,6 @@ def restock_product():
         existing_row = cursor.fetchone()
 
         if existing_row:
-            # If it exists, smoothly increment the stock value of the existing item
             query = """
                 UPDATE Inventory 
                 SET quantity = quantity + %s 
@@ -326,7 +312,6 @@ def restock_product():
             """
             cursor.execute(query, (quantity, product_id, size))
         else:
-            # If it's a completely new size configuration, insert a fresh row entry
             query = """
                 INSERT INTO Inventory (stock_id, product_id, size, quantity)
                 VALUES (%s, %s, %s, %s)
@@ -334,18 +319,70 @@ def restock_product():
             cursor.execute(query, (stock_id, product_id, size, quantity))
             
         conn.commit()
-        
         flash(f"Successfully added {quantity} items to Size {size} variant!", "success")
     except Exception as e:
         print(f"Error restocking: {e}")
         conn.rollback()
-        
         flash("Failed to increment inventory numbers. Please review structural parameter keys.", "error")
     finally:
         cursor.close()
         conn.close()
    
     return redirect(url_for('restock_view'))
+
+# Action: Delete An Inventory Variant Line and clean residual Model Context maps
+@app.route('/delete-product', methods=['POST'])
+def delete_product():
+    target_name = request.form.get('delete_name').strip()
+    target_stock_id = request.form.get('delete_stock_id').strip()
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    try:
+        # Step 1: Look up the product profile by its text name to fetch its product_id
+        find_product_query = "SELECT product_id FROM Products WHERE name = %s LIMIT 1"
+        cursor.execute(find_product_query, (target_name,))
+        product_record = cursor.fetchone()
+
+        if not product_record:
+            flash(f"Error: Product profile named '{target_name}' could not be found.", "error")
+            return redirect(url_for('add_product_view'))
+
+        pid = product_record['product_id']
+
+        # Step 2: Delete the matching row item from the Inventory table
+        delete_inventory_query = "DELETE FROM Inventory WHERE product_id = %s AND stock_id = %s"
+        cursor.execute(delete_inventory_query, (pid, target_stock_id))
+        rows_dropped = cursor.rowcount
+
+        if rows_dropped > 0:
+            # Step 3: Check if there are any remaining variations left for this product profile
+            check_remaining_query = "SELECT COUNT(*) as active_lines FROM Inventory WHERE product_id = %s"
+            cursor.execute(check_remaining_query, (pid,))
+            remaining_data = cursor.fetchone()
+
+            if remaining_data['active_lines'] == 0:
+                # If it was the final variation line, drop the parent catalog profile completely
+                delete_parent_query = "DELETE FROM Products WHERE product_id = %s"
+                cursor.execute(delete_parent_query, (pid,))
+                flash(f"Success: Dropped variant '{target_stock_id}' and cleared full master catalog entry for '{target_name}'!", "success")
+            else:
+                flash(f"Success: Dropped stock line variation '{target_stock_id}' from the database catalog.", "success")
+            
+            conn.commit()
+        else:
+            flash(f"Error: Stock ID reference key '{target_stock_id}' doesn't match a variation line recorded under '{target_name}'.", "error")
+
+    except Exception as err:
+        print(f"Database tracking engine failed a destructive sweep: {err}")
+        conn.rollback()
+        flash("Destructive query rejected. Verify that transaction histories don't lock this line element.", "error")
+    finally:
+        cursor.close()
+        conn.close()
+
+    return redirect(url_for('add_product_view'))
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

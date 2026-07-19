@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#4f46e5">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -60,12 +61,10 @@
             Alert
         </div>
         <div class="ticker-move flex items-center space-x-8 text-[11px] font-bold text-rose-700/90">
-            {% for i in range(2) %}
-                {% for item in low_stock %}
-                <span class="inline-flex items-center">
-                    ⚠️ [ID: #{{ item.stock_id }}] <span class="text-gray-900 font-extrabold mx-1">{{ item.name }}</span> ({{ item.size }}) only <span class="bg-rose-600 text-white px-1.5 py-0.2 rounded ml-1 font-black">{{ item.quantity }} left</span>
-                </span>
-                {% endfor %}
+            {% for item in low_stock %}
+            <span class="inline-flex items-center">
+                ⚠️ [ID: #{{ item.stock_id }}] <span class="text-gray-900 font-extrabold mx-1">{{ item.name }}</span> ({{ item.size }}) only <span class="bg-rose-600 text-white px-1.5 py-0.2 rounded ml-1 font-black">{{ item.quantity }} left</span>
+            </span>
             {% endfor %}
         </div>
     </div>
@@ -88,24 +87,21 @@
         {% endif %}
     {% endwith %}
 
-    <main class="w-full max-w-md mx-auto p-4">
+    <main class="w-full max-w-md mx-auto p-4 space-y-5">
+        <!-- Form 1: Main Form Content Card -->
         <div class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-5">
             <div>
                 <h2 class="text-sm font-black text-gray-900 uppercase tracking-wider">Register New Design</h2>
                 <p class="text-[11px] text-gray-400 leading-relaxed">Fill out the parameters below to configure a fresh T-shirt variant base model template.</p>
             </div>
 
-            <!-- Enhanced Form with File Upload Configuration Multipart Rule -->
             <form action="/add-product" method="POST" enctype="multipart/form-data" class="space-y-4">
                 
-                <!-- Interactive Premium File Selector UI Component Wrapper -->
                 <div class="space-y-1.5">
                     <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1">T-Shirt Graphic Preview Image</label>
                     <div class="relative group border-2 border-dashed border-gray-200 hover:border-indigo-400 bg-gray-50/50 rounded-2xl p-4 transition-all duration-200 flex flex-col items-center justify-center text-center cursor-pointer min-h-[120px]">
-                        <!-- Single Master Native Input Trigger -->
                         <input type="file" name="image_file" id="image_file" accept="image/*" onchange="previewSelectedFile(event)" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-20">
                         
-                        <!-- File Upload Dynamic Shell Interface States -->
                         <div id="upload-placeholder-ui" class="space-y-1 z-10">
                             <span class="text-2xl block">📸</span>
                             <span class="text-xs font-bold text-gray-700 block">Tap to Capture or Upload File</span>
@@ -137,6 +133,30 @@
 
                 <button type="submit" class="w-full bg-gray-900 hover:bg-indigo-600 active:scale-95 text-white font-black text-xs p-4 rounded-xl shadow-xs transition-all uppercase tracking-wider mt-2">
                     Create Product Entry
+                </button>
+            </form>
+        </div>
+
+        <!-- Form 2: Destructive Removal Action Card (New Delete Form Component) -->
+        <div class="bg-white rounded-3xl p-5 border border-red-100 shadow-sm space-y-5">
+            <div>
+                <h2 class="text-sm font-black text-red-600 uppercase tracking-wider">Remove Inventory Line</h2>
+                <p class="text-[11px] text-gray-400 leading-relaxed">Provide verification variables below to discard an internal warehouse variant scale or parent database registry context template completely.</p>
+            </div>
+
+            <form action="/delete-product" method="POST" onsubmit="return confirm('Are you completely sure you want to delete this inventory entry? This cannot be undone.');" class="space-y-4">
+                <div>
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1 mb-1.5">Verify Product Title / Name</label>
+                    <input type="text" name="delete_name" placeholder="Exact name of model to drop"  class="w-full text-xs p-3.5 rounded-xl bg-red-50/30 border border-gray-200 font-bold placeholder-gray-300 focus:outline-none focus:border-red-500 focus:bg-white transition-all">
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest block px-1 mb-1.5">Target Stock Identity String (Stock ID)</label>
+                    <input type="text" name="delete_stock_id" placeholder="e.g., S1, BATCH-01"  class="w-full text-xs p-3.5 rounded-xl bg-red-50/30 border border-gray-200 font-bold placeholder-gray-300 focus:outline-none focus:border-red-500 focus:bg-white transition-all">
+                </div>
+
+                <button type="submit" class="w-full bg-red-600 hover:bg-red-700 active:scale-95 text-white font-black text-xs p-4 rounded-xl shadow-xs transition-all uppercase tracking-wider mt-1">
+                    Delete Stock Variant Line
                 </button>
             </form>
         </div>
@@ -176,7 +196,6 @@
             }
         }
 
-        // Automatically hide alert message box cards after 4.5 seconds
         window.addEventListener('DOMContentLoaded', () => {
             const container = document.getElementById('flash-message-container');
             if (container) {
