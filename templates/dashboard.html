@@ -36,6 +36,40 @@
             animation: ticker 25s linear infinite;
         }
         .ticker-move:hover { animation-play-state: paused; }
+
+        /* Advanced Full-Page CSS Engine Print Override Architecture Rules */
+        @media print {
+            body { 
+                background: white !important; 
+                color: black !important;
+                padding-bottom: 0 !important;
+            }
+            header, .ticker-wrap, nav, #tab-analytics-content, .print-hide-btn, .date-filter-wrap {
+                display: none !important;
+            }
+            #tab-reports-content {
+                display: block !important;
+            }
+            main {
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .report-card-wrapper {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+            }
+            .scrollable-report-pane {
+                max-height: none !important;
+                overflow: visible !important;
+            }
+            .sale-row-card {
+                background: white !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+                page-break-inside: avoid;
+            }
+        }
     </style>
 </head>
 <body class="bg-[#f8fafc] text-gray-900 font-sans antialiased pb-28 select-none">
@@ -59,7 +93,6 @@
             Alert
         </div>
         <div class="ticker-move flex items-center space-x-8 text-[11px] font-bold text-rose-700/90">
-            <!-- Render the list twice to prevent any layout breaking in the loop animation -->
             {% for i in range(2) %}
                 {% for item in low_stock %}
                 <span class="inline-flex items-center">
@@ -149,26 +182,36 @@
             </section>
         </div>
 
-        <!-- Tab 2: Daily Sales Reporting Module -->
+        <!-- Tab 2: Daily/Date-Wise Sales Reporting Module -->
         <div id="tab-reports-content" class="tab-content space-y-4">
-            <section class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4">
-                <div class="flex justify-between items-center border-b border-gray-50 pb-3">
+            <section class="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4 report-card-wrapper">
+                <div class="flex justify-between items-start border-b border-gray-50 pb-3">
                     <div>
-                        <h2 class="text-sm font-black text-gray-900 uppercase tracking-wider">Daily Statement Log</h2>
-                        <p class="text-[11px] text-gray-400">Reviewing store checkouts logged today</p>
+                        <h2 class="text-sm font-black text-gray-900 uppercase tracking-wider">Statement Reporting Log</h2>
+                        <p class="text-[11px] text-gray-400">Reviewing store checkouts logged by configuration parameters</p>
                     </div>
-                    <button onclick="window.print()" class="text-[10px] bg-gray-900 text-white font-black px-3.5 py-2 rounded-xl hover:bg-gray-800 shadow-xs transition-all">
-                        🖨️ Print Report
+                    <button onclick="window.print()" class="text-[10px] bg-gray-900 text-white font-black px-3.5 py-2 rounded-xl hover:bg-gray-800 shadow-xs transition-all print-hide-btn">
+                        🖨️ Print Full Page
                     </button>
                 </div>
 
-                <div class="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
+                <!-- Date Filter Input Widget -->
+                <div class="bg-slate-50 rounded-xl p-3 border border-gray-100 space-y-1 date-filter-wrap">
+                    <label class="text-[9px] font-black text-gray-400 uppercase tracking-wider block px-0.5">Filter Ledger By Date</label>
+                    <input type="date" id="report-date-filter" onchange="filterSalesByDateInput()" class="w-full text-xs p-2.5 rounded-lg bg-white border border-gray-200 font-extrabold text-gray-800 focus:outline-none focus:border-indigo-500">
+                </div>
+
+                <div id="sales-rows-container" class="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1 scrollable-report-pane">
                     {% if today_sales_items %}
                         {% for sale in today_sales_items %}
-                        <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex justify-between items-center hover:border-gray-200 transition-all">
+                        <div class="bg-gray-50 border border-gray-100 rounded-2xl p-4 flex justify-between items-center hover:border-gray-200 transition-all sale-row-card" data-sale-date="{{ sale.date_time.split(' ')[0] if ' ' in sale.date_time else sale.date_time }}">
                             <div>
                                 <h4 class="text-xs font-extrabold text-gray-900 tracking-wide">{{ sale.name }}</h4>
-                                <p class="text-[10px] text-gray-400 font-medium mt-0.5">Size Variant: <span class="font-bold text-gray-700 uppercase bg-gray-200 px-1.5 py-0.2 rounded text-[9px]">{{ sale.size_sold }}</span> • Qty: <span class="text-indigo-600 font-black">{{ sale.quantity_sold }}</span></p>
+                                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                                    <span class="font-bold text-gray-700 uppercase bg-gray-200 px-1.5 py-0.2 rounded text-[9px]">Size: {{ sale.size_sold }}</span>
+                                    <span class="font-extrabold text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded text-[9px] border border-indigo-100">Stock ID: #{{ sale.stock_id if sale.stock_id else 'N/A' }}</span>
+                                    <span class="text-[10px] text-gray-400 font-medium">Qty: <span class="text-indigo-600 font-black">{{ sale.quantity_sold }}</span></span>
+                                </div>
                             </div>
                             <div class="text-right space-y-0.5">
                                 <span class="text-xs font-black text-gray-900 block">₹{{ sale.sales_price * sale.quantity_sold }}</span>
@@ -177,7 +220,7 @@
                         </div>
                         {% endfor %}
                     {% else %}
-                        <p class="text-center py-12 text-xs font-bold text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">No transactions recorded today.</p>
+                        <p id="empty-state-text" class="text-center py-12 text-xs font-bold text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">No transactions recorded today.</p>
                     {% endif %}
                 </div>
             </section>
@@ -258,6 +301,45 @@
 
     <!-- Operational Engine Scripting Logic -->
     <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const localDateStr = new Date().toISOString().split('T')[0];
+            const filterInput = document.getElementById('report-date-filter');
+            if (filterInput) {
+                filterInput.value = localDateStr;
+                filterSalesByDateInput();
+            }
+        });
+
+        function filterSalesByDateInput() {
+            const filterValue = document.getElementById('report-date-filter').value;
+            const rows = document.querySelectorAll('.sale-row-card');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const rowDate = row.getAttribute('data-sale-date');
+                if (rowDate === filterValue || filterValue === "") {
+                    row.style.setProperty('display', 'flex', 'important');
+                    visibleCount++;
+                } else {
+                    row.style.setProperty('display', 'none', 'important');
+                }
+            });
+
+            let emptyState = document.getElementById('empty-state-text');
+            if (visibleCount === 0) {
+                if (!emptyState) {
+                    emptyState = document.createElement('p');
+                    emptyState.id = 'empty-state-text';
+                    emptyState.className = 'text-center py-12 text-xs font-bold text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200';
+                    document.getElementById('sales-rows-container').appendChild(emptyState);
+                }
+                emptyState.innerText = `No transactions recorded for date: ${filterValue || 'all'}`;
+                emptyState.style.display = 'block';
+            } else if (emptyState) {
+                emptyState.style.display = 'none';
+            }
+        }
+
         function switchAppTab(target) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.getElementById(`tab-${target}-content`).classList.add('active');
@@ -300,7 +382,8 @@
                 globalActiveVariants.forEach((variant) => {
                     const option = document.createElement('option');
                     option.value = variant.size;
-                    option.text = `Size ${variant.size} (Stock: ${variant.quantity})`;
+                    // UPDATED: Displays both Size, Stock ID, and Live Stock values cleanly inside the dropdown choice options
+                    option.text = `Size ${variant.size} (ID: ${variant.stock_id}) - Stock: ${variant.quantity}`;
                     sizeSelector.appendChild(option);
                 });
                 

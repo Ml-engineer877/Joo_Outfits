@@ -73,6 +73,7 @@ def dashboard():
     low_stock_items = cursor.fetchall()
 
     # 4. Fetch Grouped Catalog Models with Safe JSON Size Aggregation Array Mapping
+    # Pulls stock_id so the frontend select option displays it alongside live values instantly
     grouped_catalog_query = """
         SELECT 
             p.product_id,
@@ -112,16 +113,30 @@ def dashboard():
         else:
             row['variants_json'] = "[]"
 
-    # 5. Fetch Daily Detailed Checkout Statements Log
-    today_sales_query = """
-        SELECT s.quantity_sold, s.sales_price, s.cost_price_at_sale, s.size_sold, p.name
+    # 5. Fetch Detailed Checkout Statements Log 
+    # MAPPED TO JOIN INVENTORY NATIVELY BY MATCHING PRODUCT_ID AND SIZE KEYS
+    all_sales_query = """
+        SELECT 
+            s.quantity_sold, 
+            s.sales_price, 
+            s.cost_price_at_sale, 
+            s.size_sold, 
+            s.date_time, 
+            p.name,
+            COALESCE(i.stock_id, 'N/A') as stock_id
         FROM Sales s
         JOIN Products p ON s.product_id = p.product_id
-        WHERE DATE(s.date_time) = %s
+        LEFT JOIN Inventory i ON s.product_id = i.product_id AND s.size_sold = i.size
         ORDER BY s.date_time DESC
     """
-    cursor.execute(today_sales_query, (current_date,))
+    cursor.execute(all_sales_query)
     today_sales_data = cursor.fetchall()
+    
+    # Convert datetime columns to strings so data attributes render properly in Jinja loop
+    for sale in today_sales_data:
+        if isinstance(sale['date_time'], datetime):
+            # Keeps date string format safe for the data-sale-date tracking layer
+            sale['date_time'] = sale['date_time'].strftime('%Y-%m-%d %H:%M:%S')
     
     cursor.close()
     conn.close()
